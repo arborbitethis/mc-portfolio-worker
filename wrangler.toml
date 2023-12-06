@@ -1,0 +1,8 @@
+name = "mc-portfolio-worker"
+main = "src/index.ts"
+compatibility_date = "2023-11-30"
+
+[[d1_databases]]
+binding = "DB" # i.e. available in your Worker on env.DB
+database_name = "mc-portfolio-db"
+database_id = "008546a2-0655-423b-8043-688606ac81b2"
