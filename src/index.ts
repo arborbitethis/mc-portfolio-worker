@@ -1,6 +1,7 @@
 
 export interface Env {
     DB: D1Database;
+    LCCBBucket: R2Bucket
 }
 
 
@@ -8,11 +9,18 @@ export default {
     async fetch(request: Request, env: Env) {
         const url = new URL(request.url);
         const pathname = url.pathname;
-        const corsHeaders = {
-            "Access-Control-Allow-Origin": "https://www.courter.dev",
+        const requestOrigin = request.headers.get("Origin");
+        const allowedOrigins = ["https://www.lilycancookbetter.com", "https://lilycancookbetter.com"];
+
+        let corsHeaders = {
             "Access-Control-Allow-Methods": "GET, PUT, POST, OPTIONS",
             "Access-Control-Allow-Headers": "*",
         };
+
+        // Set the Access-Control-Allow-Origin dynamically
+        if (allowedOrigins.includes(requestOrigin)) {
+            corsHeaders["Access-Control-Allow-Origin"] = requestOrigin;
+        }
 
 
         // Route for fetching all recipes
@@ -126,6 +134,33 @@ export default {
             }
 
             return new Response("Recipe created successfully", { status: 201, headers: { "Content-Type": "application/json", ...corsHeaders } });
+        }
+
+        if (pathname === "/api/uploadimage" && request.method === "POST") {
+            const url = new URL(request.url);
+  
+            // Handle the file upload from FormData
+            // Assuming the image is being sent as 'file'
+            const formData = await request.formData();
+            const imageFile = formData.get('image');
+            const stepId = formData.get('stepId');
+            const recipeId = formData.get('recipeId');
+
+            const key = `images/${recipeId}/${stepId}`;
+            
+            // Create multipart upload
+            const multipartUpload = await env.LCCBBucket.createMultipartUpload(key);
+
+            // Upload the image part
+            const uploadedPart = await multipartUpload.uploadPart(1, imageFile);
+
+            // Complete the multipart upload
+            const object = await multipartUpload.complete([uploadedPart]);
+
+            return new Response(JSON.stringify({ key: object.key, etag: object.httpEtag }), { 
+                status: 200, 
+                headers: { "Content-Type": "application/json", ...corsHeaders }
+            });
         }
 
         // Default response if no route is matched
